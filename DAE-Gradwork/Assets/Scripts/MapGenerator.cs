@@ -154,8 +154,9 @@ public class MapGenerator : MonoBehaviour
             }
         }
 
+        FlowFieldGenerator.FlowFieldData flowField = FlowFieldGenerator.GenerateFlowField(noiseMap, 25);
 
-        return new MapData(noiseMap, colourMap);
+        return new MapData(noiseMap, colourMap, flowField);
     }
 
     void OnValidate()
@@ -199,10 +200,12 @@ public struct MapData
 {
     public float[,] HeightMap;
     public Color[] ColourMap;
+    public FlowFieldGenerator.FlowFieldData FlowField;
 
-    public MapData(float[,] heightMap, Color[] colourMap)
+    public MapData(float[,] heightMap, Color[] colourMap, FlowFieldGenerator.FlowFieldData flowField)
     {
         this.HeightMap = heightMap;
         this.ColourMap = colourMap;
+        this.FlowField = flowField;
     }
 }

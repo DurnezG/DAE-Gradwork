@@ -1,10 +1,11 @@
-using UnityEngine;
 using System.Collections.Generic;
+using UnityEditor.Rendering;
+using UnityEngine;
 
 public class EndlessTerrain : MonoBehaviour
 {
 
-    const float _SCALE = 5f;
+    public const float SCALE = 5f;
 
     const float _VIEWER_MOVE_THRESHOLD_FOR_CHUNK_UPDATE = 25f;
     const float _SQR_VIEWER_MOVE_THRESHOLD_FOR_CHUNK_UPDATE = _VIEWER_MOVE_THRESHOLD_FOR_CHUNK_UPDATE * _VIEWER_MOVE_THRESHOLD_FOR_CHUNK_UPDATE;
@@ -18,7 +19,7 @@ public class EndlessTerrain : MonoBehaviour
     public static Vector2 viewerPosition;
     private Vector2 _viewerPositionOld;
     private static MapGenerator _mapGenerator;
-    private int _chunkSize;
+    public int ChunkSize { get; private set; }
     private int _chunksVisibleInViewDst;
 
     private Dictionary<Vector2, TerrainChunk> _terrainChunkDictionary = new Dictionary<Vector2, TerrainChunk>();
@@ -29,15 +30,15 @@ public class EndlessTerrain : MonoBehaviour
         _mapGenerator = FindFirstObjectByType<MapGenerator>();
 
         maxViewDst = detailLevels[detailLevels.Length - 1].visibleDstThreshold;
-        _chunkSize = MapGenerator.MAP_CHUNK_SIZE - 1;
-        _chunksVisibleInViewDst = Mathf.RoundToInt(maxViewDst / _chunkSize);
+        ChunkSize = MapGenerator.MAP_CHUNK_SIZE - 1;
+        _chunksVisibleInViewDst = Mathf.RoundToInt(maxViewDst / ChunkSize);
 
         UpdateVisibleChunks();
     }
 
     void Update()
     {
-        viewerPosition = new Vector2(viewer.position.x, viewer.position.z) / _SCALE;
+        viewerPosition = new Vector2(viewer.position.x, viewer.position.z) / SCALE;
 
         if ((_viewerPositionOld - viewerPosition).sqrMagnitude > _SQR_VIEWER_MOVE_THRESHOLD_FOR_CHUNK_UPDATE)
         {
@@ -55,8 +56,8 @@ public class EndlessTerrain : MonoBehaviour
         }
         _terrainChunksVisibleLastUpdate.Clear();
 
-        int currentChunkCoordX = Mathf.RoundToInt(viewerPosition.x / _chunkSize);
-        int currentChunkCoordY = Mathf.RoundToInt(viewerPosition.y / _chunkSize);
+        int currentChunkCoordX = Mathf.RoundToInt(viewerPosition.x / ChunkSize);
+        int currentChunkCoordY = Mathf.RoundToInt(viewerPosition.y / ChunkSize);
 
         for (int yOffset = -_chunksVisibleInViewDst; yOffset <= _chunksVisibleInViewDst; yOffset++)
         {
@@ -70,12 +71,30 @@ public class EndlessTerrain : MonoBehaviour
                 }
                 else
                 {
-                    _terrainChunkDictionary.Add(viewedChunkCoord, new TerrainChunk(viewedChunkCoord, _chunkSize, detailLevels, transform, mapMaterial));
+                    _terrainChunkDictionary.Add(viewedChunkCoord, new TerrainChunk(viewedChunkCoord, ChunkSize, detailLevels, transform, mapMaterial));
                 }
 
             }
         }
     }
+
+    public TerrainChunk GetChunkAtPosition(Vector3 worldPos)
+    {
+        Vector2 chunkPos = new Vector2(worldPos.x, worldPos.z) / SCALE;
+
+        int currentChunkCoordX = Mathf.RoundToInt(chunkPos.x / ChunkSize);
+        int currentChunkCoordY = Mathf.RoundToInt(chunkPos.y / ChunkSize);
+
+        Vector2 viewedChunkCoord = new Vector2(currentChunkCoordX, currentChunkCoordY);
+
+        if (_terrainChunkDictionary.TryGetValue(viewedChunkCoord, out TerrainChunk chunk))
+        {
+            return chunk;
+        }
+
+        return null;
+    }
+
 
     public class TerrainChunk
     {
@@ -93,6 +112,10 @@ public class EndlessTerrain : MonoBehaviour
         private bool _mapDataReceived;
         private int _previousLODIndex = -1;
 
+        public Vector3 WorldPosition => _meshObject.transform.position;
+
+        public FlowFieldGenerator.FlowFieldData FlowField;
+
         public TerrainChunk(Vector2 coord, int size, LODInfo[] detailLevels, Transform parent, Material material)
         {
             this._detailLevels = detailLevels;
@@ -106,9 +129,9 @@ public class EndlessTerrain : MonoBehaviour
             _meshFilter = _meshObject.AddComponent<MeshFilter>();
             _meshRenderer.material = material;
 
-            _meshObject.transform.position = positionV3 * _SCALE;
+            _meshObject.transform.position = positionV3 * SCALE;
             _meshObject.transform.parent = parent;
-            _meshObject.transform.localScale = Vector3.one * _SCALE;
+            _meshObject.transform.localScale = Vector3.one * SCALE;
             SetVisible(false);
 
             _lodMeshes = new LODMesh[detailLevels.Length];
@@ -124,6 +147,8 @@ public class EndlessTerrain : MonoBehaviour
         {
             this._mapData = mapData;
             _mapDataReceived = true;
+            
+            FlowField = mapData.FlowField;
 
             Texture2D texture = TextureGenerator.TextureFromColourMap(mapData.ColourMap, MapGenerator.MAP_CHUNK_SIZE, MapGenerator.MAP_CHUNK_SIZE);
             _meshRenderer.material.mainTexture = texture;
