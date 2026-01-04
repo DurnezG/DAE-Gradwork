@@ -108,7 +108,7 @@ public class EndlessTerrain : MonoBehaviour
         private LODInfo[] _detailLevels;
         private LODMesh[] _lodMeshes;
 
-        private MapData _mapData;
+        public MapData MapData { get; private set; }
         private bool _mapDataReceived;
         private int _previousLODIndex = -1;
 
@@ -145,7 +145,7 @@ public class EndlessTerrain : MonoBehaviour
 
         void OnMapDataReceived(MapData mapData)
         {
-            this._mapData = mapData;
+            this.MapData = mapData;
             _mapDataReceived = true;
             
             FlowField = mapData.FlowField;
@@ -191,7 +191,7 @@ public class EndlessTerrain : MonoBehaviour
                         }
                         else if (!lodMesh.HasRequestedMesh)
                         {
-                            lodMesh.RequestMesh(_mapData);
+                            lodMesh.RequestMesh(MapData);
                         }
                     }
 

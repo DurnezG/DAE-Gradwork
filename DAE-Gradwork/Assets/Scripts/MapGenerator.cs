@@ -5,15 +5,15 @@ using System.Collections.Generic;
 
 public class MapGenerator : MonoBehaviour
 {
-
     public enum DrawMode { NoiseMap, ColourMap, Mesh, FalloffMap, None };
+    
+    [Header("Map Settings")]
     public DrawMode drawMode;
 
     public Noise.NormalizeMode normalizeMode;
+    public TerrainType[] regions;
 
     public const int MAP_CHUNK_SIZE = 239;
-    [Range(0, 6)]
-    public int editorPreviewLOD;
     public float noiseScale;
 
     public int octaves;
@@ -24,14 +24,18 @@ public class MapGenerator : MonoBehaviour
     public int seed;
     public Vector2 offset;
 
+    [Header("Falloff map")]
     public bool useFalloff;
 
     public float meshHeightMultiplier;
     public AnimationCurve meshHeightCurve;
 
+    [Header("Editor")]
+
     public bool autoUpdate;
 
-    public TerrainType[] regions;
+    [Range(0, 6)]
+    public int editorPreviewLOD;
 
     private float[,] _falloffMap;
 
@@ -154,7 +158,7 @@ public class MapGenerator : MonoBehaviour
             }
         }
 
-        FlowFieldGenerator.FlowFieldData flowField = FlowFieldGenerator.GenerateFlowField(noiseMap, 25);
+        FlowFieldGenerator.FlowFieldData flowField = FlowFieldGenerator.GenerateFlowField(noiseMap, meshHeightCurve, meshHeightMultiplier, 25);
 
         return new MapData(noiseMap, colourMap, flowField);
     }

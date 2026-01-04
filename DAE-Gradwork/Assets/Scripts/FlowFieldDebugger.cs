@@ -3,14 +3,20 @@ using static EndlessTerrain;
 
 public class FlowFieldDebugger : MonoBehaviour
 {
+    public enum DebugDrawMode { flat, terrainHeight }
+    public enum ColorMode { direction, accumulation }
+
     [Header("References")]
     public EndlessTerrain terrain;
     public Transform viewer;
+    public MapGenerator mapGenerator;
 
     [Header("Visual Settings")]
     public float arrowLength = 0.35f;
     public float arrowHeadSize = 0.15f;
     public float yOffset = 0.2f;
+
+    public DebugDrawMode drawMode = DebugDrawMode.flat;
 
     private readonly Color[] directionColors = {
         new Color(0.0f, 1f, 1f),  // N  cyan
@@ -38,6 +44,8 @@ public class FlowFieldDebugger : MonoBehaviour
     {
         var flow = chunk.FlowField;
 
+        AnimationCurve curve = new AnimationCurve(mapGenerator.meshHeightCurve.keys);
+
         Vector3 chunkCenter = chunk.WorldPosition;
         float half = (terrain.ChunkSize * SCALE) / 2f;
         Vector3 origin = chunkCenter - new Vector3(half, 0, half);
@@ -55,6 +63,15 @@ public class FlowFieldDebugger : MonoBehaviour
 
                 Vector3 start = origin + new Vector3(x * cellSize, yOffset, y * cellSize);
                 Vector3 end = start + new Vector3(offset.x, 0, offset.y) * (cellSize * arrowLength);
+
+                if(drawMode == DebugDrawMode.terrainHeight)
+                {
+                    if (chunk.MapData.HeightMap == null) continue;
+
+                    float startHeight = curve.Evaluate(chunk.MapData.HeightMap[x, y]) * mapGenerator.meshHeightMultiplier * SCALE;
+                    start.y = startHeight + yOffset;
+                    end.y = startHeight + (yOffset - 1f);
+                }
 
 
                 // Color per direction

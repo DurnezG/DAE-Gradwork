@@ -25,10 +25,10 @@ public class FlowFieldGenerator
         public int Height;
     }
 
-    public static FlowFieldData GenerateFlowField(float[,] heightmap, int itterations = 20, float accumulationStart = 1f)
+    public static FlowFieldData GenerateFlowField(float[,] noiseMap, AnimationCurve heightCurve, float heightMultiplier, int itterations = 20, float accumulationStart = 1f)
     {
-        int width = heightmap.GetLength(0);
-        int height = heightmap.GetLength(1);
+        int width = noiseMap.GetLength(0);
+        int height = noiseMap.GetLength(1);
 
         FlowFieldData data = new FlowFieldData();
         data.Width = width;
@@ -36,22 +36,24 @@ public class FlowFieldGenerator
         data.DirectionMap = new FlowDirection[width, height];
         data.AccumulationMap = new float[width, height];
 
-        AssignFlowDirections(heightmap, data.DirectionMap);
+        AssignFlowDirections(noiseMap, heightCurve, heightMultiplier, data.DirectionMap);
         //ComputeAccumulation(data.DirectionMap, data.AccumulationMap, itterations, accumulationStart);
 
         return data;
     }
 
-    private static void AssignFlowDirections(float[,] map, FlowDirection[,] directionMap)
+    private static void AssignFlowDirections(float[,] map, AnimationCurve _heightCurve, float heightMultiplier, FlowDirection[,] directionMap)
     {
         int width = map.GetLength(0);
         int height = map.GetLength(1);
+
+        AnimationCurve heightCurve = new AnimationCurve(_heightCurve.keys);
 
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
-                float cell = map[x, y];
+                float cell = heightCurve.Evaluate(map[x, y]) * heightMultiplier;
                 float lowest = cell;
                 int flowDir = -1;
 
@@ -61,7 +63,7 @@ public class FlowFieldGenerator
                     int ny = y + DIRECTIONS[i].y;
 
                     if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
-                    float nh = map[nx, ny];
+                    float nh = heightCurve.Evaluate(map[nx, ny]) * heightMultiplier;
 
                     if (nh < lowest)
                     {
