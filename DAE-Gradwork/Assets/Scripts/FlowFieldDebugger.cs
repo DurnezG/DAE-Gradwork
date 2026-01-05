@@ -6,7 +6,7 @@ public class FlowFieldDebugger : MonoBehaviour
     public enum DebugDrawMode { flat, terrainHeight }
     public enum ColorMode { direction, accumulation }
 
-    public Vector3 TestOffset;
+    public Vector3 ArrowOffset;
 
     [Header("References")]
     public EndlessTerrain terrain;
@@ -18,7 +18,9 @@ public class FlowFieldDebugger : MonoBehaviour
     public float arrowHeadSize = 0.15f;
     public float yOffset = 0.2f;
 
+    [Header("Drawing options")]
     public DebugDrawMode drawMode = DebugDrawMode.flat;
+    public ColorMode colorMode = ColorMode.direction;
 
     private readonly Color[] directionColors = {
         new Color(0.0f, 1f, 1f),  // N  cyan
@@ -53,6 +55,9 @@ public class FlowFieldDebugger : MonoBehaviour
         Vector3 origin = chunkCenter - new Vector3(half, 0, half);
         float cellSize = terrain.ChunkSize / (float)(flow.Width) * EndlessTerrain.SCALE;
 
+        float minAccHeight, maxAccHeight;
+        GetMinMax(chunk.MapData.HeightMap, out minAccHeight, out maxAccHeight);
+
         for (int x = 0; x < flow.Width; x++)
         {
             for (int y = 0; y < flow.Height; y++)
@@ -63,7 +68,7 @@ public class FlowFieldDebugger : MonoBehaviour
 
                 Vector2Int offset = FlowFieldGenerator.GetDirectionVector(dir);
 
-                Vector3 start = TestOffset + origin + new Vector3(x * cellSize, yOffset, y * cellSize);
+                Vector3 start = ArrowOffset + origin + new Vector3(x * cellSize, yOffset, y * cellSize);
                 Vector3 end = start + new Vector3(offset.x, 0, offset.y) * (cellSize * arrowLength);
 
                 if(drawMode == DebugDrawMode.terrainHeight)
@@ -75,9 +80,18 @@ public class FlowFieldDebugger : MonoBehaviour
                     end.y = startHeight + (yOffset - 1f);
                 }
 
-
                 // Color per direction
-                Gizmos.color = directionColors[(int)dir];
+                switch (colorMode)
+                {
+                    case ColorMode.direction:
+                        Gizmos.color = directionColors[(int)dir];
+                        break;
+                    case ColorMode.accumulation:
+                        float acc = flow.AccumulationMap[x, y];
+                        Gizmos.color = Color.Lerp(Color.green, Color.red, acc / 10f); // assuming max accumulation ~10 for color scaling
+                        break;
+                }
+                //Gizmos.color = directionColors[(int)dir];
                 Gizmos.DrawLine(start, end);
                 DrawArrowHead(end, offset);
             }
@@ -93,5 +107,24 @@ public class FlowFieldDebugger : MonoBehaviour
 
         Gizmos.DrawLine(tip, baseLeft);
         Gizmos.DrawLine(tip, baseRight);
+    }
+
+    public static void GetMinMax(float[,] data, out float min, out float max)
+    {
+        min = float.MaxValue;
+        max = float.MinValue;
+
+        int width = data.GetLength(0);
+        int height = data.GetLength(1);
+
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                float v = data[x, y];
+                if (v < min) min = v;
+                if (v > max) max = v;
+            }
+        }
     }
 }

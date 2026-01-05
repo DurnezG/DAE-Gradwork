@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Security.Cryptography;
 using Unity.VisualScripting;
 using UnityEngine;
@@ -28,7 +29,7 @@ public class FlowFieldGenerator
         public int Height;
     }
 
-    public static FlowFieldData GenerateFlowField(float[,] noiseMap, AnimationCurve heightCurve, float heightMultiplier, int itterations = 20, float accumulationStart = 1f)
+    public static FlowFieldData GenerateFlowField(float[,] noiseMap, AnimationCurve heightCurve, float heightMultiplier)
     {
         int width = noiseMap.GetLength(0);
         int height = noiseMap.GetLength(1);
@@ -40,7 +41,7 @@ public class FlowFieldGenerator
         data.AccumulationMap = new float[width, height];
 
         AssignFlowDirections(noiseMap, heightCurve, heightMultiplier, data.DirectionMap);
-        //ComputeAccumulation(data.DirectionMap, data.AccumulationMap, itterations, accumulationStart);
+        ComputeAccumulation(data.DirectionMap, data.AccumulationMap);
 
         return data;
     }
@@ -81,37 +82,67 @@ public class FlowFieldGenerator
         }
     }
 
-    private static void ComputeAccumulation(FlowDirection[,] directionMap, float[,] accumulationMap, int iterations, float startValue)
+    private static void ComputeAccumulation(FlowDirection[,] directionMap, float[,] accumulationMap)
     {
         int width = directionMap.GetLength(0);
         int height = directionMap.GetLength(1);
+
+        int[,] incomming = new int[width, height];
+
+        // Initialize accumulation and compute in-degrees
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                accumulationMap[x, y] = 1f;
+
+                FlowDirection dir = directionMap[x, y];
+                if (dir == FlowDirection.Still) continue;
+
+                Vector2Int d = DIRECTIONS[(int)dir];
+                int nx = x + d.x;
+                int ny = y + d.y;
+
+                if (nx < 0 || ny < 0 || nx >= width || ny >= height)
+                    continue;
+
+                incomming[nx, ny]++;
+            }
+        }
+
+        // Queue all source cells (peaks)
+        // If their input is 0, that means no water flows into them. So they must be a peak cell.
+        Queue<Vector2Int> queue = new Queue<Vector2Int>();
 
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
-                accumulationMap[x, y] = startValue;
+                if (incomming[x, y] == 0)
+                    queue.Enqueue(new Vector2Int(x, y));
             }
         }
 
-        for (int itteration = 0; itteration < iterations; itteration++)
+        // Calculate all accumulation values from the peaks down to the sinks
+        while (queue.Count > 0)
         {
-            for (int x = 0; x < width; x++)
-            {
-                for (int y = 0; y < height; y++)
-                {
-                    FlowDirection dir = directionMap[x, y];
-                    if (dir == FlowDirection.Still) continue;
+            Vector2Int cell = queue.Dequeue();
+            FlowDirection dir = directionMap[cell.x, cell.y];
 
-                    Vector2Int offset = DIRECTIONS[(int)dir];
-                    int nx = x + offset.x;
-                    int ny = y + offset.y;
+            if (dir == FlowDirection.Still) continue;
 
-                    if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+            Vector2Int d = DIRECTIONS[(int)dir];
+            int nx = cell.x + d.x;
+            int ny = cell.y + d.y;
 
-                    accumulationMap[nx, ny] += accumulationMap[x, y];
-                }
-            }
+            if (nx < 0 || ny < 0 || nx >= width || ny >= height)
+                continue;
+
+            accumulationMap[nx, ny] += accumulationMap[cell.x, cell.y];
+
+            incomming[nx, ny]--;
+            if (incomming[nx, ny] == 0)
+                queue.Enqueue(new Vector2Int(nx, ny));
         }
     }
 }

@@ -24,6 +24,10 @@ public class MapGenerator : MonoBehaviour
     public int seed;
     public Vector2 offset;
 
+    [Header("Flow Field Settings")]
+    public int AccumulationIterations = 25;
+    public float AccumulationStartValue = 1f;
+
     [Header("Falloff map")]
     public bool useFalloff;
 
@@ -158,7 +162,7 @@ public class MapGenerator : MonoBehaviour
             }
         }
 
-        FlowFieldGenerator.FlowFieldData flowField = FlowFieldGenerator.GenerateFlowField(noiseMap, meshHeightCurve, meshHeightMultiplier, 25);
+        FlowFieldGenerator.FlowFieldData flowField = FlowFieldGenerator.GenerateFlowField(noiseMap, meshHeightCurve, meshHeightMultiplier);
 
         return new MapData(noiseMap, colourMap, flowField);
     }
