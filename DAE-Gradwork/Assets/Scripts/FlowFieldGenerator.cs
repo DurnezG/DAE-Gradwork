@@ -1,4 +1,7 @@
+using System.Security.Cryptography;
+using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 public class FlowFieldGenerator
 {
@@ -53,7 +56,8 @@ public class FlowFieldGenerator
         {
             for (int y = 0; y < height; y++)
             {
-                float cell = heightCurve.Evaluate(map[x, y]) * heightMultiplier;
+                //float cell = map[x, y]; //heightCurve.Evaluate(map[x, y]) * heightMultiplier;
+                float cell = heightCurve.Evaluate(map[x, height - y - 1]) * heightMultiplier * EndlessTerrain.SCALE;
                 float lowest = cell;
                 int flowDir = -1;
 
@@ -63,8 +67,8 @@ public class FlowFieldGenerator
                     int ny = y + DIRECTIONS[i].y;
 
                     if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
-                    float nh = heightCurve.Evaluate(map[nx, ny]) * heightMultiplier;
-
+                    //float nh = map[nx, ny]; //heightCurve.Evaluate(map[nx, ny]) * heightMultiplier;
+                    float nh = heightCurve.Evaluate(map[nx, height - ny - 1]) * heightMultiplier * EndlessTerrain.SCALE;
                     if (nh < lowest)
                     {
                         lowest = nh;

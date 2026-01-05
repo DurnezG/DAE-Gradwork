@@ -6,6 +6,8 @@ public class FlowFieldDebugger : MonoBehaviour
     public enum DebugDrawMode { flat, terrainHeight }
     public enum ColorMode { direction, accumulation }
 
+    public Vector3 TestOffset;
+
     [Header("References")]
     public EndlessTerrain terrain;
     public Transform viewer;
@@ -61,14 +63,14 @@ public class FlowFieldDebugger : MonoBehaviour
 
                 Vector2Int offset = FlowFieldGenerator.GetDirectionVector(dir);
 
-                Vector3 start = origin + new Vector3(x * cellSize, yOffset, y * cellSize);
+                Vector3 start = TestOffset + origin + new Vector3(x * cellSize, yOffset, y * cellSize);
                 Vector3 end = start + new Vector3(offset.x, 0, offset.y) * (cellSize * arrowLength);
 
                 if(drawMode == DebugDrawMode.terrainHeight)
                 {
                     if (chunk.MapData.HeightMap == null) continue;
 
-                    float startHeight = curve.Evaluate(chunk.MapData.HeightMap[x, y]) * mapGenerator.meshHeightMultiplier * SCALE;
+                    float startHeight = curve.Evaluate(chunk.MapData.HeightMap[x, flow.Height - y - 1]) * mapGenerator.meshHeightMultiplier * SCALE;
                     start.y = startHeight + yOffset;
                     end.y = startHeight + (yOffset - 1f);
                 }
