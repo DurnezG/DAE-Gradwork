@@ -27,49 +27,63 @@ public class FlowFieldGenerator
         public float[,] AccumulationMap;
         public int Width;
         public int Height;
+        public int StepSize;
     }
 
-    public static FlowFieldData GenerateFlowField(float[,] noiseMap, AnimationCurve heightCurve, float heightMultiplier)
+    public static FlowFieldData GenerateFlowField(float[,] noiseMap, AnimationCurve heightCurve, float heightMultiplier, int sampleStep = 1)
     {
-        int width = noiseMap.GetLength(0);
-        int height = noiseMap.GetLength(1);
+        sampleStep = Mathf.Max(1, sampleStep);
+
+        int mapWidth = noiseMap.GetLength(0);
+        int mapHeight = noiseMap.GetLength(1);
+
+        int flowWidth = (mapWidth + sampleStep - 1) / sampleStep;
+        int flowHeight = (mapHeight + sampleStep - 1) / sampleStep;
 
         FlowFieldData data = new FlowFieldData();
-        data.Width = width;
-        data.Height = height;
-        data.DirectionMap = new FlowDirection[width, height];
-        data.AccumulationMap = new float[width, height];
+        data.Width = flowWidth;
+        data.Height = flowHeight;
+        data.DirectionMap = new FlowDirection[flowWidth, flowHeight];
+        data.AccumulationMap = new float[flowWidth, flowHeight];
+        data.StepSize = sampleStep;
 
-        AssignFlowDirections(noiseMap, heightCurve, heightMultiplier, data.DirectionMap);
+        AssignFlowDirections(noiseMap, heightCurve, heightMultiplier, data.DirectionMap, sampleStep);
         ComputeAccumulation(data.DirectionMap, data.AccumulationMap);
 
         return data;
     }
 
-    private static void AssignFlowDirections(float[,] map, AnimationCurve _heightCurve, float heightMultiplier, FlowDirection[,] directionMap)
+    private static void AssignFlowDirections(float[,] map, AnimationCurve _heightCurve, float heightMultiplier, FlowDirection[,] directionMap, int sampleStep)
     {
         int width = map.GetLength(0);
         int height = map.GetLength(1);
 
+        int flowWidth = directionMap.GetLength(0);
+        int flowHeight = directionMap.GetLength(1);
+
         AnimationCurve heightCurve = new AnimationCurve(_heightCurve.keys);
 
-        for (int x = 0; x < width; x++)
+        for (int x = 0; x < flowWidth; x++)
         {
-            for (int y = 0; y < height; y++)
+            for (int y = 0; y < flowHeight; y++)
             {
-                //float cell = map[x, y]; //heightCurve.Evaluate(map[x, y]) * heightMultiplier;
-                float cell = heightCurve.Evaluate(map[x, height - y - 1]) * heightMultiplier * EndlessTerrain.SCALE;
-                float lowest = cell;
+                int hx = x * sampleStep;
+                int hy = y * sampleStep;
+
+                float cellHeight = heightCurve.Evaluate(map[hx, height - hy - 1]) * heightMultiplier * EndlessTerrain.SCALE;
+
+                float lowest = cellHeight;
                 int flowDir = -1;
 
                 for (int i = 0; i < DIRECTIONS.Length; i++)
                 {
-                    int nx = x + DIRECTIONS[i].x;
-                    int ny = y + DIRECTIONS[i].y;
+                    int nx = hx + DIRECTIONS[i].x * sampleStep;
+                    int ny = hy + DIRECTIONS[i].y * sampleStep;
 
                     if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
-                    //float nh = map[nx, ny]; //heightCurve.Evaluate(map[nx, ny]) * heightMultiplier;
+
                     float nh = heightCurve.Evaluate(map[nx, height - ny - 1]) * heightMultiplier * EndlessTerrain.SCALE;
+
                     if (nh < lowest)
                     {
                         lowest = nh;
@@ -81,6 +95,7 @@ public class FlowFieldGenerator
             }
         }
     }
+
 
     private static void ComputeAccumulation(FlowDirection[,] directionMap, float[,] accumulationMap)
     {

@@ -27,6 +27,7 @@ public class MapGenerator : MonoBehaviour
     [Header("Flow Field Settings")]
     public int AccumulationIterations = 25;
     public float AccumulationStartValue = 1f;
+    public int sampleStep = 1;
 
     [Header("Falloff map")]
     public bool useFalloff;
@@ -162,7 +163,7 @@ public class MapGenerator : MonoBehaviour
             }
         }
 
-        FlowFieldGenerator.FlowFieldData flowField = FlowFieldGenerator.GenerateFlowField(noiseMap, meshHeightCurve, meshHeightMultiplier);
+        FlowFieldGenerator.FlowFieldData flowField = FlowFieldGenerator.GenerateFlowField(noiseMap, meshHeightCurve, meshHeightMultiplier, sampleStep);
 
         return new MapData(noiseMap, colourMap, flowField);
     }
@@ -176,6 +177,10 @@ public class MapGenerator : MonoBehaviour
         if (octaves < 0)
         {
             octaves = 0;
+        }
+        if (sampleStep < 1)
+        {
+            sampleStep = 1;
         }
 
         _falloffMap = FalloffGenerator.GenerateFalloffMap(MAP_CHUNK_SIZE);

@@ -75,7 +75,10 @@ public class FlowFieldDebugger : MonoBehaviour
                 {
                     if (chunk.MapData.HeightMap == null) continue;
 
-                    float startHeight = curve.Evaluate(chunk.MapData.HeightMap[x, flow.Height - y - 1]) * mapGenerator.meshHeightMultiplier * SCALE;
+                    int hx = Mathf.Clamp(x * flow.StepSize, 0, chunk.MapData.HeightMap.GetLength(0) + 1);
+                    int hy = Mathf.Clamp(y * flow.StepSize, 0, chunk.MapData.HeightMap.GetLength(1) + 1);
+
+                    float startHeight = curve.Evaluate(chunk.MapData.HeightMap[hx, chunk.MapData.HeightMap.GetLength(0) - hy - 1]) * mapGenerator.meshHeightMultiplier * SCALE;
                     start.y = startHeight + yOffset;
                     end.y = startHeight + (yOffset - 1f);
                 }
