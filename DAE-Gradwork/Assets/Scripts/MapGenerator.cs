@@ -1,7 +1,9 @@
-using UnityEngine;
 using System;
-using System.Threading;
 using System.Collections.Generic;
+using System.Threading;
+using Unity.VisualScripting;
+using UnityEngine;
+using static RiverGenerator;
 
 public class MapGenerator : MonoBehaviour
 {
@@ -28,6 +30,9 @@ public class MapGenerator : MonoBehaviour
     public int AccumulationIterations = 25;
     public float AccumulationStartValue = 1f;
     public int sampleStep = 1;
+
+    [Header("River generator")]
+    public float RiverThreshold = 20f;
 
     [Header("Falloff map")]
     public bool useFalloff;
@@ -164,8 +169,9 @@ public class MapGenerator : MonoBehaviour
         }
 
         FlowFieldGenerator.FlowFieldData flowField = FlowFieldGenerator.GenerateFlowField(noiseMap, meshHeightCurve, meshHeightMultiplier, sampleStep);
+        List<RiverPath> rivers = RiverGenerator.GenerateRivers(flowField, RiverThreshold);
 
-        return new MapData(noiseMap, colourMap, flowField);
+        return new MapData(noiseMap, colourMap, flowField, rivers);
     }
 
     void OnValidate()
@@ -214,11 +220,13 @@ public struct MapData
     public float[,] HeightMap;
     public Color[] ColourMap;
     public FlowFieldGenerator.FlowFieldData FlowField;
+    public List<RiverPath> RiverPaths;
 
-    public MapData(float[,] heightMap, Color[] colourMap, FlowFieldGenerator.FlowFieldData flowField)
+    public MapData(float[,] heightMap, Color[] colourMap, FlowFieldGenerator.FlowFieldData flowField, List<RiverPath> riverPaths)
     {
         this.HeightMap = heightMap;
         this.ColourMap = colourMap;
         this.FlowField = flowField;
+        this.RiverPaths = riverPaths;
     }
 }

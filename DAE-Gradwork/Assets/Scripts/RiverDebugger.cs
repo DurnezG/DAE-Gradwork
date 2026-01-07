@@ -13,9 +13,6 @@ public class RiverDebugger : MonoBehaviour
     public Transform viewer;
     public MapGenerator mapGenerator;
 
-    [Header("River Settings")]
-    public float riverThreshold = 20f;
-
     [Header("Visual Settings")]
     public float yOffset = 0.2f;
     public float lineWidth = 0.1f;
@@ -23,6 +20,17 @@ public class RiverDebugger : MonoBehaviour
 
     [Header("Drawing Options")]
     public DebugDrawMode drawMode = DebugDrawMode.flat;
+
+    [Header("Debugging")]
+    public bool liveDebugging = false;
+    public float liveRiverThreshold = 20f;
+
+    private void OnValidate()
+    {
+        if(liveRiverThreshold < 0f)
+            liveRiverThreshold = 1f;
+    }
+
 
     void OnDrawGizmos()
     {
@@ -42,7 +50,12 @@ public class RiverDebugger : MonoBehaviour
         if (flow.AccumulationMap == null)
             return;
 
-        List<RiverPath> rivers = RiverGenerator.GenerateRivers(flow, riverThreshold);
+        List<RiverPath> rivers;
+
+        if (liveDebugging)
+            rivers = RiverGenerator.GenerateRivers(flow, liveRiverThreshold);
+        else
+            rivers = chunk.MapData.RiverPaths;
         if (rivers == null || rivers.Count == 0)
             return;
 
