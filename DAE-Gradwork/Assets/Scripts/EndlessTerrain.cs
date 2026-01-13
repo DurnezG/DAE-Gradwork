@@ -1,6 +1,11 @@
+using Mono.Cecil;
+using System;
 using System.Collections.Generic;
 using UnityEditor.Rendering;
 using UnityEngine;
+using UnityEngine.AdaptivePerformance.Provider;
+using static FlowFieldGenerator;
+using static MapData;
 
 public class EndlessTerrain : MonoBehaviour
 {
@@ -25,6 +30,14 @@ public class EndlessTerrain : MonoBehaviour
     private Dictionary<Vector2, TerrainChunk> _terrainChunkDictionary = new Dictionary<Vector2, TerrainChunk>();
     private static List<TerrainChunk> _terrainChunksVisibleLastUpdate = new List<TerrainChunk>();
 
+
+    [Header("DEBUGG REMOVE ME!!!!")]
+    bool set = false;
+    public Renderer chunk1; 
+    public Renderer chunk2;
+
+
+
     void Start()
     {
         _mapGenerator = FindFirstObjectByType<MapGenerator>();
@@ -45,6 +58,22 @@ public class EndlessTerrain : MonoBehaviour
             _viewerPositionOld = viewerPosition;
             UpdateVisibleChunks();
         }
+
+        if (set) return;
+
+        if (!_terrainChunkDictionary.TryGetValue(new Vector2(0, 0), out TerrainChunk tc1)) return;
+        if(!_terrainChunkDictionary.TryGetValue(new Vector2(0, -1), out TerrainChunk tc2)) return;
+
+        if(tc1.MapData == null || tc2.MapData == null) return;
+
+        var t1 = TextureGenerator.TextureFromHeightMap(tc1.MapData.HeightMap);
+        var t2 = TextureGenerator.TextureFromHeightMap(tc2.MapData.HeightMap);
+
+        chunk1.sharedMaterial.mainTexture = t1;
+        chunk1.transform.localScale = new Vector3(t1.width, 1, t1.height);
+        chunk2.sharedMaterial.mainTexture = t2;
+        chunk2.transform.localScale = new Vector3(t2.width, 1, t2.height);
+        set = true;
     }
 
     void UpdateVisibleChunks()
@@ -71,9 +100,8 @@ public class EndlessTerrain : MonoBehaviour
                 }
                 else
                 {
-                    _terrainChunkDictionary.Add(viewedChunkCoord, new TerrainChunk(viewedChunkCoord, ChunkSize, detailLevels, transform, mapMaterial));
+                    _terrainChunkDictionary.Add(viewedChunkCoord, new TerrainChunk(viewedChunkCoord, ChunkSize, detailLevels, transform, mapMaterial, CheckForBorderUpdate));
                 }
-
             }
         }
     }
@@ -95,6 +123,160 @@ public class EndlessTerrain : MonoBehaviour
         return null;
     }
 
+    public Vector2 GetChunkVectorAtPosition(Vector3 worldPos)
+    {
+        Vector2 chunkPos = new Vector2(worldPos.x, worldPos.z) / SCALE;
+
+        int currentChunkCoordX = Mathf.RoundToInt(chunkPos.x / ChunkSize);
+        int currentChunkCoordY = Mathf.RoundToInt(chunkPos.y / ChunkSize);
+
+        return new Vector2(currentChunkCoordX, currentChunkCoordY);
+    }
+
+    public bool TryGetChunk(Vector2 neighbourCoord, out TerrainChunk neighbourChunk)
+    {
+        return _terrainChunkDictionary.TryGetValue(neighbourCoord, out neighbourChunk);
+    }
+
+    private void CheckForBorderUpdate(TerrainChunk chunk)
+    {
+        if (!chunk.MapData.IsFullyMapped)
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                if (chunk.MapData.bordersMapped[i])
+                    continue;
+
+                Border border = (Border)i;
+
+                Vector2 neighbourCoord = GetNeighbourCoord(GetChunkVectorAtPosition(chunk.WorldPosition), border);
+
+                if (_terrainChunkDictionary.TryGetValue(neighbourCoord, out TerrainChunk neighbour))
+                {
+                    if(ResolveBorder(chunk, neighbour, border))
+                    {
+                        chunk.MapData.bordersMapped[i] = true;
+                        neighbour.MapData.bordersMapped[(int)Opposite(border)] = true;
+                    }
+                }
+            }
+        }
+    }
+
+
+    bool ResolveBorder(TerrainChunk sourceChunk, TerrainChunk neighbourChunk, Border border)
+    {
+        if (neighbourChunk == null || neighbourChunk.MapData == null || sourceChunk == null || sourceChunk.MapData == null)
+            return false;
+        Debug.Log("Resolving border " + border.ToString() + " between chunks " + GetChunkVectorAtPosition(sourceChunk.WorldPosition) + " and " + GetChunkVectorAtPosition(neighbourChunk.WorldPosition));
+
+        var flowA = sourceChunk.MapData.FlowField;
+
+        int width = flowA.Width;
+        int height = flowA.Height;
+
+        // Overlap counter
+        //int overlap = 3;
+
+        int borderI = flowA.StepSize; // this == meshSimplificationIncrement
+        int innerMinX = borderI;
+        int innerMaxX = width - borderI - 1;
+
+        int innerMinY = borderI;
+        int innerMaxY = height - borderI - 1;
+
+        switch (border)
+        {
+            case Border.North:
+                for (int x = 0; x < width; x++)
+                {
+                    ResolveCellWithNeighbour(sourceChunk, neighbourChunk, x, height - 1, x, innerMaxY);
+                    ResolveCellWithNeighbour(neighbourChunk, sourceChunk, x, 0, x, innerMinY);
+                }
+                break;
+
+            case Border.South:
+                for (int x = 0; x < width; x++)
+                {
+                    ResolveCellWithNeighbour(sourceChunk, neighbourChunk, x, 0, x, innerMinY);
+                    ResolveCellWithNeighbour(neighbourChunk, sourceChunk, x, height - 1, x, innerMaxY);
+                }
+                break;
+
+            case Border.East:
+                for (int y = 0; y < height; y++)
+                {
+                    ResolveCellWithNeighbour(sourceChunk, neighbourChunk, width -1, y, innerMinX, y);
+                    ResolveCellWithNeighbour(neighbourChunk, sourceChunk, 0, y, innerMaxX, y);
+                }
+                break;
+
+            case Border.West:
+                for (int y = 0; y < height; y++)
+                {
+                    ResolveCellWithNeighbour(sourceChunk, neighbourChunk, 0, y, innerMaxX, y);
+                    ResolveCellWithNeighbour(neighbourChunk, sourceChunk, width - 1, y, innerMinX, y);
+                }
+                break;
+        }
+
+        return true;
+    }
+
+    void ResolveCellWithNeighbour(TerrainChunk sourceChunk, TerrainChunk neighbourChunk, int sourceX, int sourceY, int neighbourX, int neighbourY)
+    {
+        var flow = sourceChunk.MapData.FlowField;
+
+        var hmSource = sourceChunk.MapData.HeightMap;
+        var hmNeighbour = neighbourChunk.MapData.HeightMap;
+
+        int width = hmSource.GetLength(0);
+        int height = hmSource.GetLength(1);
+
+        int step = flow.StepSize;
+
+        int hx = sourceX * step;
+        int hy = sourceY * step;
+
+        float currentHeight = FlowFieldGenerator.SampleHeight(hmSource, hx, hy, flow);
+
+        float lowest = currentHeight;
+        int bestDir = -1;
+
+        for (int i = 0; i < FlowFieldGenerator.DIRECTIONS.Length; i++)
+        {
+            Vector2Int dir = FlowFieldGenerator.DIRECTIONS[i];
+
+            int rawNx = hx + dir.x * step;
+            int rawNy = hy + dir.y * step;
+
+            float neighbourHeight;
+
+            if (rawNx >= 0 && rawNy >= 0 && rawNx < width && rawNy < height)
+            {
+                neighbourHeight = FlowFieldGenerator.SampleHeight(hmSource, rawNx, rawNy, flow);
+            }
+            else
+            {
+                int nHx = neighbourX * step;
+                int nHy = neighbourY * step;
+                //int nHx = neighbourX * step + dir.x * step;
+                //int nHy = neighbourY * step + dir.y * step;
+
+
+                neighbourHeight = FlowFieldGenerator.SampleHeight(hmNeighbour, nHx, nHy, flow);
+            }
+
+            if (neighbourHeight < lowest)
+            {
+                lowest = neighbourHeight;
+                bestDir = i;
+            }
+        }
+
+        flow.DirectionMap[sourceX, sourceY] = bestDir == -1 ? FlowDirection.Still : (FlowDirection)bestDir;
+    }
+
 
     public class TerrainChunk
     {
@@ -112,13 +294,16 @@ public class EndlessTerrain : MonoBehaviour
         private bool _mapDataReceived;
         private int _previousLODIndex = -1;
 
+        public Action<TerrainChunk> NeighbourghCallback = null;
+
         public Vector3 WorldPosition => _meshObject.transform.position;
 
         public FlowFieldGenerator.FlowFieldData FlowField;
 
-        public TerrainChunk(Vector2 coord, int size, LODInfo[] detailLevels, Transform parent, Material material)
+        public TerrainChunk(Vector2 coord, int size, LODInfo[] detailLevels, Transform parent, Material material, Action<TerrainChunk> neighbourghCallback = null)
         {
             this._detailLevels = detailLevels;
+            this.NeighbourghCallback = neighbourghCallback;
 
             _position = coord * size;
             _bounds = new Bounds(_position, Vector2.one * size);
@@ -154,6 +339,7 @@ public class EndlessTerrain : MonoBehaviour
             _meshRenderer.material.mainTexture = texture;
 
             UpdateTerrainChunk();
+            NeighbourghCallback.Invoke(this);
         }
 
 

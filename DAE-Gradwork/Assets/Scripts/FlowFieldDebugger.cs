@@ -34,12 +34,17 @@ public class FlowFieldDebugger : MonoBehaviour
         Color.gray                      // Still (unused)
     };
 
+    [Header("Value debugging")]
+    public Vector2 activeChunk;
+
     void OnDrawGizmos()
     {
         if (terrain == null || viewer == null) return;
 
         var chunk = terrain.GetChunkAtPosition(viewer.position);
         if (chunk == null || chunk.FlowField.DirectionMap == null) return;
+
+        activeChunk = terrain.GetChunkVectorAtPosition(chunk.WorldPosition);
 
         DrawFlow(chunk);
     }
@@ -61,6 +66,7 @@ public class FlowFieldDebugger : MonoBehaviour
         for (int x = 0; x < flow.Width; x++)
         {
             for (int y = 0; y < flow.Height; y++)
+            //for (int y = 0; y < flow.Height; y += flow.Height - 1)
             {
                 var dir = flow.DirectionMap[x, y];
                 if (dir == FlowFieldGenerator.FlowDirection.Still)

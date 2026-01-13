@@ -215,12 +215,28 @@ public struct TerrainType
     public Color colour;
 }
 
-public struct MapData
+public class MapData
 {
     public float[,] HeightMap;
     public Color[] ColourMap;
     public FlowFieldGenerator.FlowFieldData FlowField;
     public List<RiverPath> RiverPaths;
+
+    public enum Border { North = 0, East = 1, South = 2, West = 3 }
+    public bool[] bordersMapped = new bool[4];
+
+    public bool IsFullyMapped
+    {
+        get
+        {
+            foreach (bool mapped in bordersMapped)
+            {
+                if (!mapped)
+                    return false;
+            }
+            return true;
+        }
+    }
 
     public MapData(float[,] heightMap, Color[] colourMap, FlowFieldGenerator.FlowFieldData flowField, List<RiverPath> riverPaths)
     {
@@ -228,5 +244,30 @@ public struct MapData
         this.ColourMap = colourMap;
         this.FlowField = flowField;
         this.RiverPaths = riverPaths;
+        this.bordersMapped = new bool[4] { false, false, false, false };
+    }
+
+    public static Vector2 GetNeighbourCoord(Vector2 coord, Border border)
+    {
+        switch (border)
+        {
+            case Border.North: return coord + new Vector2(0, 1);
+            case Border.East: return coord + new Vector2(1, 0);
+            case Border.South: return coord + new Vector2(0, -1);
+            case Border.West: return coord + new Vector2(-1, 0);
+            default: return coord;
+        }
+    }
+
+    public static Border Opposite(Border b)
+    {
+        switch (b)
+        {
+            case Border.North: return Border.South;
+            case Border.South: return Border.North;
+            case Border.East: return Border.West;
+            case Border.West: return Border.East;
+            default: return b;
+        }
     }
 }
