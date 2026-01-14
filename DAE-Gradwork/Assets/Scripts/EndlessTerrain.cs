@@ -35,6 +35,7 @@ public class EndlessTerrain : MonoBehaviour
     bool set = false;
     public Renderer chunk1; 
     public Renderer chunk2;
+    public Border demoBorder;
 
 
 
@@ -61,8 +62,26 @@ public class EndlessTerrain : MonoBehaviour
 
         if (set) return;
 
+        Vector2 borderVector = new Vector2();
+
+        switch(demoBorder)
+        {
+            case Border.North:
+                borderVector = new Vector2(0, 1);
+                break;
+            case Border.South:
+                borderVector = new Vector2(0, -1);
+                break;
+            case Border.East:
+                borderVector = new Vector2(1, 0);
+                break;
+            case Border.West:
+                borderVector = new Vector2(-1, 0);
+                break;
+        }
+
         if (!_terrainChunkDictionary.TryGetValue(new Vector2(0, 0), out TerrainChunk tc1)) return;
-        if(!_terrainChunkDictionary.TryGetValue(new Vector2(0, -1), out TerrainChunk tc2)) return;
+        if(!_terrainChunkDictionary.TryGetValue(borderVector, out TerrainChunk tc2)) return;
 
         if(tc1.MapData == null || tc2.MapData == null) return;
 
@@ -168,7 +187,6 @@ public class EndlessTerrain : MonoBehaviour
     {
         if (neighbourChunk == null || neighbourChunk.MapData == null || sourceChunk == null || sourceChunk.MapData == null)
             return false;
-        Debug.Log("Resolving border " + border.ToString() + " between chunks " + GetChunkVectorAtPosition(sourceChunk.WorldPosition) + " and " + GetChunkVectorAtPosition(neighbourChunk.WorldPosition));
 
         var flowA = sourceChunk.MapData.FlowField;
 
@@ -176,9 +194,9 @@ public class EndlessTerrain : MonoBehaviour
         int height = flowA.Height;
 
         // Overlap counter
-        //int overlap = 3;
+        int overlap = 2;
 
-        int borderI = flowA.StepSize; // this == meshSimplificationIncrement
+        int borderI = overlap;
         int innerMinX = borderI;
         int innerMaxX = width - borderI - 1;
 
@@ -188,34 +206,34 @@ public class EndlessTerrain : MonoBehaviour
         switch (border)
         {
             case Border.North:
-                for (int x = 0; x < width; x++)
+                for (int x = innerMinX; x <= innerMaxX; x++)
                 {
-                    ResolveCellWithNeighbour(sourceChunk, neighbourChunk, x, height - 1, x, innerMaxY);
-                    ResolveCellWithNeighbour(neighbourChunk, sourceChunk, x, 0, x, innerMinY);
+                    ResolveCellWithNeighbour(sourceChunk, neighbourChunk, x, height - 1, x, innerMaxY, border);
+                    ResolveCellWithNeighbour(neighbourChunk, sourceChunk, x, 0, x, innerMinY, border);
                 }
                 break;
 
             case Border.South:
-                for (int x = 0; x < width; x++)
+                for (int x = innerMinX; x <= innerMaxX; x++)
                 {
-                    ResolveCellWithNeighbour(sourceChunk, neighbourChunk, x, 0, x, innerMinY);
-                    ResolveCellWithNeighbour(neighbourChunk, sourceChunk, x, height - 1, x, innerMaxY);
+                    ResolveCellWithNeighbour(sourceChunk, neighbourChunk, x, 0, x, innerMinY, border); 
+                    ResolveCellWithNeighbour(neighbourChunk, sourceChunk, x, height - 1, x, innerMaxY, border);
                 }
                 break;
 
             case Border.East:
-                for (int y = 0; y < height; y++)
+                for (int y = innerMinY; y <= innerMaxY; y++)
                 {
-                    ResolveCellWithNeighbour(sourceChunk, neighbourChunk, width -1, y, innerMinX, y);
-                    ResolveCellWithNeighbour(neighbourChunk, sourceChunk, 0, y, innerMaxX, y);
+                    ResolveCellWithNeighbour(sourceChunk, neighbourChunk, width -1, y, innerMinX, y, border);
+                    ResolveCellWithNeighbour(neighbourChunk, sourceChunk, 0, y, innerMaxX, y, border);
                 }
                 break;
 
             case Border.West:
-                for (int y = 0; y < height; y++)
+                for (int y = innerMinY; y <= innerMaxY; y++)
                 {
-                    ResolveCellWithNeighbour(sourceChunk, neighbourChunk, 0, y, innerMaxX, y);
-                    ResolveCellWithNeighbour(neighbourChunk, sourceChunk, width - 1, y, innerMinX, y);
+                    ResolveCellWithNeighbour(sourceChunk, neighbourChunk, 0, y, innerMaxX, y, border);
+                    ResolveCellWithNeighbour(neighbourChunk, sourceChunk, width - 1, y, innerMinX, y, border);
                 }
                 break;
         }
@@ -223,7 +241,7 @@ public class EndlessTerrain : MonoBehaviour
         return true;
     }
 
-    void ResolveCellWithNeighbour(TerrainChunk sourceChunk, TerrainChunk neighbourChunk, int sourceX, int sourceY, int neighbourX, int neighbourY)
+    void ResolveCellWithNeighbour(TerrainChunk sourceChunk, TerrainChunk neighbourChunk, int sourceX, int sourceY, int neighbourXhm, int neighbourYhm, Border border)
     {
         var flow = sourceChunk.MapData.FlowField;
 
@@ -239,6 +257,13 @@ public class EndlessTerrain : MonoBehaviour
         int hy = sourceY * step;
 
         float currentHeight = FlowFieldGenerator.SampleHeight(hmSource, hx, hy, flow);
+
+        if (border == Border.North)
+        { }
+        //else if (border == Border.South)
+        //else if (border == Border.East)
+        else if (border == Border.West)
+                    Debug.Log($"Resolving cell {sourceX},{sourceY} with neighbour cell {neighbourXhm},{neighbourYhm} | Current Height: {currentHeight} -> {SampleHeight(hmNeighbour, neighbourXhm, neighbourYhm, neighbourChunk.FlowField)}");
 
         float lowest = currentHeight;
         int bestDir = -1;
@@ -258,11 +283,12 @@ public class EndlessTerrain : MonoBehaviour
             }
             else
             {
-                int nHx = neighbourX * step;
-                int nHy = neighbourY * step;
-                //int nHx = neighbourX * step + dir.x * step;
-                //int nHy = neighbourY * step + dir.y * step;
+                //int nHx = neighbourX * step;
+                //int nHy = neighbourY * step;
+                int nHx = (neighbourXhm + dir.x) * step;
+                int nHy = (neighbourYhm + dir.y) * step;
 
+                if (nHx < 0 || nHy < 0 || nHx >= width || nHy >= height) continue;
 
                 neighbourHeight = FlowFieldGenerator.SampleHeight(hmNeighbour, nHx, nHy, flow);
             }
