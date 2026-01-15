@@ -251,9 +251,9 @@ public class MapData
     {
         switch (border)
         {
-            case Border.North: return coord + new Vector2(0, 1);
+            case Border.North: return coord + new Vector2(0, -1);
             case Border.East: return coord + new Vector2(1, 0);
-            case Border.South: return coord + new Vector2(0, -1);
+            case Border.South: return coord + new Vector2(0, 1);
             case Border.West: return coord + new Vector2(-1, 0);
             default: return coord;
         }

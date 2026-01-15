@@ -208,16 +208,16 @@ public class EndlessTerrain : MonoBehaviour
             case Border.North:
                 for (int x = innerMinX; x <= innerMaxX; x++)
                 {
-                    ResolveCellWithNeighbour(sourceChunk, neighbourChunk, x, height - 1, x, innerMaxY, border);
-                    ResolveCellWithNeighbour(neighbourChunk, sourceChunk, x, 0, x, innerMinY, border);
+                    ResolveCellWithNeighbour(sourceChunk, neighbourChunk, x, 0, x, innerMaxY, border);
+                    ResolveCellWithNeighbour(neighbourChunk, sourceChunk, x, height - 1, x, innerMinY, border);
                 }
                 break;
 
             case Border.South:
                 for (int x = innerMinX; x <= innerMaxX; x++)
                 {
-                    ResolveCellWithNeighbour(sourceChunk, neighbourChunk, x, 0, x, innerMinY, border); 
-                    ResolveCellWithNeighbour(neighbourChunk, sourceChunk, x, height - 1, x, innerMaxY, border);
+                    ResolveCellWithNeighbour(sourceChunk, neighbourChunk, x, height - 1, x, innerMinY, border); 
+                    ResolveCellWithNeighbour(neighbourChunk, sourceChunk, x, 0, x, innerMaxY, border);
                 }
                 break;
 
@@ -258,12 +258,7 @@ public class EndlessTerrain : MonoBehaviour
 
         float currentHeight = FlowFieldGenerator.SampleHeight(hmSource, hx, hy, flow);
 
-        if (border == Border.North)
-        { }
-        //else if (border == Border.South)
-        //else if (border == Border.East)
-        else if (border == Border.West)
-                    Debug.Log($"Resolving cell {sourceX},{sourceY} with neighbour cell {neighbourXhm},{neighbourYhm} | Current Height: {currentHeight} -> {SampleHeight(hmNeighbour, neighbourXhm, neighbourYhm, neighbourChunk.FlowField)}");
+        //Debug.Log($"Resolving cell {sourceX},{sourceY} with neighbour cell {neighbourXhm},{neighbourYhm} | Current Height: {currentHeight} -> {SampleHeight(hmNeighbour, neighbourXhm, neighbourYhm, neighbourChunk.FlowField)}");
 
         float lowest = currentHeight;
         int bestDir = -1;
@@ -283,8 +278,6 @@ public class EndlessTerrain : MonoBehaviour
             }
             else
             {
-                //int nHx = neighbourX * step;
-                //int nHy = neighbourY * step;
                 int nHx = (neighbourXhm + dir.x) * step;
                 int nHy = (neighbourYhm + dir.y) * step;
 
