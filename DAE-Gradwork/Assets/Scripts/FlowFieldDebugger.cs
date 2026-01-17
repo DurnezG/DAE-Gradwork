@@ -1,3 +1,4 @@
+using UnityEditor;
 using UnityEngine;
 using static EndlessTerrain;
 
@@ -36,13 +37,15 @@ public class FlowFieldDebugger : MonoBehaviour
 
     [Header("Value debugging")]
     public Vector2 activeChunk;
+    public bool showAccumulationValues = false;
+
 
     void OnDrawGizmos()
     {
         if (terrain == null || viewer == null) return;
 
         var chunk = terrain.GetChunkAtPosition(viewer.position);
-        if (chunk == null || chunk.FlowField.DirectionMap == null) return;
+        if (chunk == null || chunk.MapData == null) return;
 
         activeChunk = terrain.GetChunkVectorAtPosition(chunk.WorldPosition);
 
@@ -51,7 +54,50 @@ public class FlowFieldDebugger : MonoBehaviour
 
     void DrawFlow(TerrainChunk chunk)
     {
-        var flow = chunk.FlowField;
+        //AnimationCurve curve = new AnimationCurve(mapGenerator.meshHeightCurve.keys);
+
+        //Vector3 chunkCenter = chunk.WorldPosition;
+        //float halfw = (terrain.debugDirection.GetLength(0) * SCALE) / 2f;
+        //float halfh = (terrain.debugDirection.GetLength(1) * SCALE) / 2f;
+        //Vector3 origin = chunkCenter - new Vector3(halfw, 0, halfh);
+        //float cellSize = terrain.ChunkSize / (float)(terrain.debugDirection.GetLength(0)) * EndlessTerrain.SCALE;
+
+        //float minAccHeight, maxAccHeight;
+        //GetMinMax(chunk.MapData.HeightMap, out minAccHeight, out maxAccHeight);
+
+        //for (int x = 0; x < terrain.debugDirection.GetLength(0); x++)
+        //{
+        //    for (int y = 0; y < terrain.debugDirection.GetLength(1); y++)
+        //    //for (int y = 0; y < flow.Height; y += flow.Height - 1)
+        //    {
+        //        var dir = terrain.debugDirection[x, y];
+        //        if (dir == FlowFieldGenerator.FlowDirection.Still)
+        //            continue;
+
+        //        Vector2Int offset = FlowFieldGenerator.GetDirectionVector(dir);
+
+        //        Vector3 start = ArrowOffset + origin + new Vector3(x * cellSize, yOffset, y * cellSize);
+        //        Vector3 end = start + new Vector3(offset.x, 0, offset.y) * (cellSize * arrowLength);
+
+        //        // Color per direction
+        //        switch (colorMode)
+        //        {
+        //            case ColorMode.direction:
+        //                Gizmos.color = directionColors[(int)dir];
+        //                break;
+        //            case ColorMode.accumulation:
+        //                float acc = terrain.debugAccumulation[x, y];
+        //                Gizmos.color = Color.Lerp(Color.green, Color.red, acc / 10f); // assuming max accumulation ~10 for color scaling
+        //                break;
+        //        }
+        //        //Gizmos.color = directionColors[(int)dir];
+        //        Gizmos.DrawLine(start, end);
+        //        DrawArrowHead(end, offset);
+        //    }
+        //}
+
+
+        var flow = chunk.MapData.FlowField;
 
         AnimationCurve curve = new AnimationCurve(mapGenerator.meshHeightCurve.keys);
 
@@ -77,7 +123,7 @@ public class FlowFieldDebugger : MonoBehaviour
                 Vector3 start = ArrowOffset + origin + new Vector3(x * cellSize, yOffset, y * cellSize);
                 Vector3 end = start + new Vector3(offset.x, 0, offset.y) * (cellSize * arrowLength);
 
-                if(drawMode == DebugDrawMode.terrainHeight)
+                if (drawMode == DebugDrawMode.terrainHeight)
                 {
                     if (chunk.MapData.HeightMap == null) continue;
 
@@ -103,6 +149,15 @@ public class FlowFieldDebugger : MonoBehaviour
                 //Gizmos.color = directionColors[(int)dir];
                 Gizmos.DrawLine(start, end);
                 DrawArrowHead(end, offset);
+
+                if (colorMode == ColorMode.accumulation && showAccumulationValues)
+                {
+                    float acc = flow.AccumulationMap[x, y];
+                    Vector3 labelPos = end + Vector3.up * 0.15f;
+
+                    Handles.color = Color.white;
+                    Handles.Label(labelPos, acc.ToString("0"));
+                }
             }
         }
     }

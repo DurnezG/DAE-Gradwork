@@ -102,6 +102,51 @@ public class FlowFieldGenerator
         }
     }
 
+    public static void RecalculateAccumulation(FlowFieldData flow)
+    {
+        int width = flow.Width;
+        int height = flow.Height;
+
+        // Clear accumulation
+        for (int y = 0; y < height; y++)
+            for (int x = 0; x < width; x++)
+                flow.AccumulationMap[x, y] = 0;
+
+        // For every cell, walk downstream and accumulate
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                AccumulateFromCell(flow, x, y);
+            }
+        }
+    }
+
+    static void AccumulateFromCell(FlowFieldData flow, int startX, int startY)
+    {
+        int x = startX;
+        int y = startY;
+
+        int width = flow.Width;
+        int height = flow.Height;
+
+        while (true)
+        {
+            if (x < 0 || y < 0 || x >= width || y >= height)
+                return;
+
+            flow.AccumulationMap[x, y]++;
+
+            FlowDirection dir = flow.DirectionMap[x, y];
+            if (dir == FlowDirection.Still)
+                return;
+
+            Vector2Int d = GetDirectionVector(dir);
+            x += d.x;
+            y += d.y;
+        }
+    }
+
     public static float SampleHeight(float[,] heightMap, int hx, int hy, FlowFieldGenerator.FlowFieldData flow)
     {
         int height = heightMap.GetLength(1);
@@ -110,7 +155,7 @@ public class FlowFieldGenerator
         return flow.HeightCurve.Evaluate(raw) * flow.HeightMultiplier * EndlessTerrain.SCALE;
     }
 
-    private static void ComputeAccumulation(FlowDirection[,] directionMap, float[,] accumulationMap)
+    public static void ComputeAccumulation(FlowDirection[,] directionMap, float[,] accumulationMap)
     {
         int width = directionMap.GetLength(0);
         int height = directionMap.GetLength(1);

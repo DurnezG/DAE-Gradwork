@@ -17,6 +17,7 @@ public class RiverDebugger : MonoBehaviour
     public float yOffset = 0.2f;
     public float lineWidth = 0.1f;
     public Color riverColor = Color.cyan;
+    public Vector3 Offset;
 
     [Header("Drawing Options")]
     public DebugDrawMode drawMode = DebugDrawMode.flat;
@@ -38,15 +39,17 @@ public class RiverDebugger : MonoBehaviour
             return;
 
         var chunk = terrain.GetChunkAtPosition(viewer.position);
-        if (chunk == null || chunk.FlowField.DirectionMap == null)
-            return;
+
+        if (chunk == null) return;
+        if (chunk.MapData == null) return;
+        if (chunk.MapData.FlowField.DirectionMap == null) return;
 
         DrawRivers(chunk);
     }
 
     void DrawRivers(TerrainChunk chunk)
     {
-        var flow = chunk.FlowField;
+        var flow = chunk.MapData.FlowField;
         if (flow.AccumulationMap == null)
             return;
 
@@ -63,7 +66,7 @@ public class RiverDebugger : MonoBehaviour
 
         Vector3 chunkCenter = chunk.WorldPosition;
         float half = (terrain.ChunkSize * SCALE) / 2f;
-        Vector3 origin = chunkCenter - new Vector3(half, 0, half);
+        Vector3 origin = chunkCenter - new Vector3(half, 0, half) + Offset;
 
         float cellSize = terrain.ChunkSize / (float)flow.Width * SCALE;
 
