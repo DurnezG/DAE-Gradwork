@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using UnityEditor.TerrainTools;
 using UnityEngine;
 using UnityEngine.Rendering;
 using static FlowFieldGenerator;
@@ -53,7 +56,47 @@ public class EndlessTerrain : MonoBehaviour
 
     private void OnDestroy()
     {
-        
+        if (_borderTimings == null || _borderTimings.Count == 0)
+            return;
+
+        // Remove outliers
+        List<float> filtered = RemoveOutliersIQR(_borderTimings);
+
+        float min = filtered.Min();
+        float max = filtered.Max();
+        float avg = filtered.Average();
+
+        using (StreamWriter writer = new StreamWriter($"{Application.persistentDataPath + "/border_timings.csv"}", false))
+        {
+            writer.WriteLine(string.Join(";", _borderTimings));
+            writer.WriteLine($"{min};{max};{avg}");
+        }
+    }
+
+    private List<float> RemoveOutliersIQR(List<float> values)
+    {
+        List<float> sorted = values.OrderBy(v => v).ToList();
+
+        float q1 = Percentile(sorted, 25);
+        float q3 = Percentile(sorted, 75);
+        float iqr = q3 - q1;
+
+        float lowerBound = q1 - 1.5f * iqr;
+        float upperBound = q3 + 1.5f * iqr;
+
+        return sorted.Where(v => v >= lowerBound && v <= upperBound).ToList();
+    }
+
+    private float Percentile(List<float> sorted, float percentile)
+    {
+        float index = (percentile / 100f) * (sorted.Count - 1);
+        int lower = Mathf.FloorToInt(index);
+        int upper = Mathf.CeilToInt(index);
+
+        if (lower == upper)
+            return sorted[lower];
+
+        return Mathf.Lerp(sorted[lower], sorted[upper], index - lower);
     }
 
     void Update()

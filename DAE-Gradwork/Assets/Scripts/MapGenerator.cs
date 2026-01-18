@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Threading;
 using Unity.VisualScripting;
 using UnityEngine;
@@ -51,10 +54,56 @@ public class MapGenerator : MonoBehaviour
 
     private Queue<MapThreadInfo<MapData>> _mapDataThreadInfoQueue = new Queue<MapThreadInfo<MapData>>();
     private Queue<MapThreadInfo<MeshData>> _meshDataThreadInfoQueue = new Queue<MapThreadInfo<MeshData>>();
+    private List<float> _flowfieldTimings = new();
 
     void Awake()
     {
         _falloffMap = FalloffGenerator.GenerateFalloffMap(MAP_CHUNK_SIZE);
+    }
+
+    private void OnDestroy()
+    {
+        if (_flowfieldTimings == null || _flowfieldTimings.Count == 0)
+            return;
+
+        // Remove outliers
+        List<float> filtered = RemoveOutliersIQR(_flowfieldTimings);
+
+        float min = filtered.Min();
+        float max = filtered.Max();
+        float avg = filtered.Average();
+
+        using (StreamWriter writer = new StreamWriter($"{Application.persistentDataPath + "/flow_timings.csv"}", false))
+        {
+            writer.WriteLine(string.Join(";", _flowfieldTimings));
+            writer.WriteLine($"{min};{max};{avg}");
+        }
+    }
+
+    private List<float> RemoveOutliersIQR(List<float> values)
+    {
+        List<float> sorted = values.OrderBy(v => v).ToList();
+
+        float q1 = Percentile(sorted, 25);
+        float q3 = Percentile(sorted, 75);
+        float iqr = q3 - q1;
+
+        float lowerBound = q1 - 1.5f * iqr;
+        float upperBound = q3 + 1.5f * iqr;
+
+        return sorted.Where(v => v >= lowerBound && v <= upperBound).ToList();
+    }
+
+    private float Percentile(List<float> sorted, float percentile)
+    {
+        float index = (percentile / 100f) * (sorted.Count - 1);
+        int lower = Mathf.FloorToInt(index);
+        int upper = Mathf.CeilToInt(index);
+
+        if (lower == upper)
+            return sorted[lower];
+
+        return Mathf.Lerp(sorted[lower], sorted[upper], index - lower);
     }
 
     public void DrawMapInEditor()
@@ -168,7 +217,12 @@ public class MapGenerator : MonoBehaviour
             }
         }
 
+        Stopwatch stopwatch = Stopwatch.StartNew();
         FlowFieldGenerator.FlowFieldData flowField = FlowFieldGenerator.GenerateFlowField(noiseMap, meshHeightCurve, meshHeightMultiplier, sampleStep);
+        stopwatch.Stop();
+        float ms = stopwatch.ElapsedMilliseconds;
+        _flowfieldTimings.Add(ms);
+
         List<RiverPath> rivers = RiverGenerator.GenerateRivers(flowField, RiverThreshold);
 
         return new MapData(noiseMap, colourMap, flowField, rivers);
