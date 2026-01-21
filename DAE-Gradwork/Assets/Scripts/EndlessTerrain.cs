@@ -644,7 +644,7 @@ public class EndlessTerrain : MonoBehaviour
 
             affected.Add(c);
 
-            if (TryStep(c, out var down))
+            if (TryStep(c, out var down)) 
                 q.Enqueue(down);
 
             foreach (var up in GetUpstream(c))
